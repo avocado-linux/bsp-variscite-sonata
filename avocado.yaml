@@ -1,0 +1,119 @@
+default_target: imx8mp-var-dart
+supported_targets:
+  - imx8mp-var-dart
+
+extensions:
+  avocado-bsp-variscite-sonata:
+    version: 0.1.0
+    release: r0
+    summary: Board support for the Variscite Sonata-Board (DART-MX8M-PLUS dev kit carrier)
+    description: >-
+      Carrier board support for the Variscite Sonata-Board -- the carrier the
+      DART-MX8M-PLUS i.MX8M Plus dev kit (VAR-STK/DVK-DT8M-PLUS) ships on. It
+      installs the kernel modules the SOM + Sonata-Board hardware loads and
+      selects the Sonata device tree, the default for the imx8mp-var-dart target.
+      Start from just the imx8mp-var-dart SOM target and override the device tree
+      / module set from this layer for a custom carrier. Other Variscite carriers
+      on the same i.MX8MP SOM line (e.g. the VAR-SOM-MX8M-PLUS SODIMM on the
+      Symphony-Board) get their own variscite-namespaced bsp-* carrier extension;
+      a target override lets one carrier extension serve multiple modules later.
+    license: Apache-2.0
+    url: https://github.com/avocadolinux/avocado-os
+    vendor: Avocado Linux <info@avocadolinux.org>
+
+    types:
+      - sysext
+      - confext
+
+    on_merge:
+      - udevadm control --reload
+      - udevadm trigger --type=subsystems --action=add --settle
+      - udevadm trigger --type=devices --action=add --settle
+
+    # Explicit module set observed via `lsmod` on a booted VSM-DT8MP-302
+    # DART-MX8M-PLUS on the Sonata-Board, plus firmware for every DART-MX8M-PLUS
+    # wireless option and i.MX8MP DSP. (That board carries a Broadcom BCM4339
+    # WiFi+BT combo, not the NXP IW612 the machine conf's nxpiw612-sdio feature
+    # assumes -- so we deliver both wireless families here.)
+    packages:
+      # --- Crypto / Security (NXP CAAM) ---
+      kernel-module-caam: '*'
+      kernel-module-caam-jr: '*'
+      kernel-module-caamalg-desc: '*'
+      kernel-module-caamhash-desc: '*'
+      kernel-module-caamkeyblob-desc: '*'
+      kernel-module-authenc: '*'
+      kernel-module-crypto-engine: '*'
+      kernel-module-error: '*'
+      kernel-module-libdes: '*'
+      kernel-module-secvio: '*'
+      kernel-module-fsl-jr-uio: '*'
+      kernel-module-crct10dif-ce: '*'
+      kernel-module-polyval-ce: '*'
+      kernel-module-polyval-generic: '*'
+      # --- WiFi / BT (Broadcom BCM4339 combo over SDIO + UART) ---
+      kernel-module-brcmfmac: '*'
+      kernel-module-brcmutil: '*'
+      kernel-module-cfg80211: '*'
+      kernel-module-bluetooth: '*'
+      kernel-module-btnxpuart: '*'
+      kernel-module-ecdh-generic: '*'
+      kernel-module-ecc: '*'
+      kernel-module-rfkill: '*'
+      # --- CAN (FlexCAN + MCP251xFD SPI) ---
+      kernel-module-flexcan: '*'
+      kernel-module-can-dev: '*'
+      kernel-module-mcp251xfd: '*'
+      # --- Audio (WM8904 codec / SAI / XCVR / HDMI) ---
+      kernel-module-snd-soc-wm8904: '*'
+      kernel-module-snd-soc-imx-card: '*'
+      kernel-module-snd-soc-imx-hdmi: '*'
+      kernel-module-snd-soc-fsl-sai: '*'
+      kernel-module-snd-soc-fsl-xcvr: '*'
+      kernel-module-snd-soc-fsl-aud2htx: '*'
+      kernel-module-snd-soc-fsl-utils: '*'
+      kernel-module-imx-pcm-dma: '*'
+      kernel-module-dw-hdmi-cec: '*'
+      # --- Camera / ISP ---
+      kernel-module-imx8-media-dev: '*'
+      # --- Peripherals (touch / RTC / USB-C PD) ---
+      kernel-module-ads7846: '*'
+      kernel-module-rtc-ds1307: '*'
+      kernel-module-extcon-ptn5150: '*'
+      # --- DMA ---
+      kernel-module-imx-sdma: '*'
+      # --- Filesystem / block / compression ---
+      kernel-module-fuse: '*'
+      kernel-module-nfsd: '*'
+      kernel-module-dm-mod: '*'
+      kernel-module-zram: '*'
+      kernel-module-zsmalloc: '*'
+      kernel-module-lz4: '*'
+      kernel-module-lz4-compress: '*'
+
+      # --- WiFi/BT firmware (SOM wireless options) ---
+      # Broadcom Sterling-LWB (BCM4339) -- confirmed on this board; the package
+      # carries the Variscite board-specific nvram (brcmfmac4339-sdio.variscite,
+      # imx8mp-var-dart.{bin,txt}) the kernel requests. LWB5+ (BCM4373) too.
+      linux-firmware-bcm4339: '*'
+      linux-firmware-bcm4373: '*'
+      linux-firmware-broadcom-license: '*'
+      # NXP IW612 (Wi-Fi 6) variant -- the nxpiw612-sdio MACHINE_FEATURE assumes
+      # this module; ship its firmware so IW612 SOMs work off the same image.
+      # (IW612 WiFi also needs the out-of-tree moal/mlan driver, which is not yet
+      # built for this target; in-tree btnxpuart BT works with this firmware.)
+      firmware-nxp-wifi-nxpiw612-sdio: '*'
+
+      # --- i.MX8MP audio DSP firmware ---
+      firmware-imx-xcvr-imx8mp: '*'   # SPDIF/eARC transceiver (snd_soc_fsl_xcvr)
+      firmware-imx-easrc-imx8mn: '*'  # async sample-rate converter
+
+      # --- regulatory + composable device tree ---
+      wireless-regdb-static: '*'
+      # Boot-time device-tree overlay service (fw_setenv fdt_overlays), shared
+      # with the rest of the NXP family; lets avocado config stack .dtbo overlays
+      # onto the Sonata-Board base DTB.
+      avocado-devicetree: '*'
+
+sdk:
+  image: docker.io/avocadolinux/sdk:{{ env.AVOCADO_DISTRO_RELEASE }}
